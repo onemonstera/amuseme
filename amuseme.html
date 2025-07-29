@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Museum Prototype</title>
+    <style>
+        /* --- CSS STYLES --- */
+        /* Basic Setup */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; /* Prevents scrollbars */
+        }
+
+        /* The main container that fills the screen */
+        .tablet-screen {
+            height: 100vh;
+            width: 100vw;
+            /* Background image updated to a museum room */
+            background: url('https://gissler.com/wp-content/uploads/2019/06/FullSizeRender-008-1-980x810.jpg') no-repeat center center;
+            background-size: cover;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Styling for the main choice panel */
+        #choice-panel {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeIn 0.5s ease-in-out;
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between buttons */
+            width: 220px;
+        }
+
+        /* General button styling */
+        button {
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid white;
+            background-color: transparent;
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        #choice-panel button:hover, #choice-panel button:active {
+            background-color: white;
+            color: black;
+            transform: scale(1.05);
+        }
+
+        /* The class that hides elements */
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- AR VIEW STYLES --- */
+        .ar-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .ar-view .character {
+            position: absolute;
+            bottom: 2%;
+            font-size: 8rem;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        .ar-view .speech-bubble {
+            position: absolute;
+            background-color: #fff;
+            color: #333;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            text-align: left;
+            max-width: 350px; /* Made slightly wider */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .ar-view .speech-bubble::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-left: 0;
+            border-bottom: 0;
+        }
+        
+        /* Close button style for AR and Trivia views */
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: rgba(0,0,0,0.5);
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .close-button:hover {
+            background-color: rgba(255,255,255,0.8);
+            color: black;
+        }
+
+        /* Artist Specific Positioning */
+        #artist-view .character {
+            left: 5%;
+        }
+        #artist-view .speech-bubble {
+            bottom: 10%;
+            left: calc(5% + 5rem);
+        }
+        #artist-view .speech-bubble::after {
+            border-right-color: #fff;
+            left: -15px;
+            bottom: 20px;
+            margin-top: -10px;
+        }
+
+        /* Historian Specific Positioning */
+        #historian-view .character {
+            right: 5%;
+        }
+        #historian-view .speech-bubble {
+            bottom: 10%;
+            right: calc(5% + 5rem);
+        }
+        #historian-view .speech-bubble::after {
+            border-left-color: #fff;
+            right: -15px;
+            bottom: 20px;
+            margin-top: -10px;
+        }
+
+        /* --- HISTORIAN INTERACTIVE ELEMENTS --- */
+        .theory-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+        }
+        .theory-buttons button {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: normal;
+            border-radius: 20px;
+            flex-grow: 1;
+        }
+        .theory-buttons button.active {
+            background-color: #007aff;
+            color: white;
+            border-color: #007aff;
+        }
+        #historian-content {
+            font-size: 1rem;
+        }
+
+
+        /* --- NEW TRIVIA PANEL STYLES --- */
+        #trivia-view {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeIn 0.5s ease-in-out;
+            position: absolute;
+            left: 25px; /* Positioned on the left */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 320px; /* A bit wider for content */
+            text-align: left;
+        }
+        .trivia-item h2 { margin-top: 0; font-size: 1.8rem; text-align: center; }
+        .trivia-item p { font-size: 1.1rem; }
+        .quiz-options button {
+            font-size: 1rem;
+            font-weight: normal;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            background-color: rgba(255,255,255,0.1);
+        }
+        .quiz-options button:hover {
+            background-color: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .trivia-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 1.5rem;
+        }
+        .trivia-nav button {
+            width: 48%;
+            padding: 0.8rem;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="tablet-screen">
+
+        <!-- Layer 1: The Main Choice Panel (Visible by default) -->
+        <div id="choice-panel">
+            <button id="show-artist-button">The Artist</button>
+            <button id="show-historian-button">The Historian</button>
+            <button id="show-trivia-button">Trivia Challenge</button>
+        </div>
+
+        <!-- Layer 2: The Artist AR View (Hidden by default) -->
+        <div id="artist-view" class="ar-view hidden">
+            <div class="character">👨‍🎨</div>
+            <div class="speech-bubble">
+                "My goal was not just to paint a moment, but to capture the spirit of a nation at its turning point. I wanted every brushstroke to convey the immense courage and the chilling cold of that fateful Christmas night."
+            </div>
+            <button class="back-button close-button">X</button>
+        </div>
+
+        <!-- Layer 3: The Historian AR View (Hidden by default) -->
+        <div id="historian-view" class="ar-view hidden">
+            <div class="character">👩‍🏫</div>
+            <div class="speech-bubble">
+                <div class="theory-buttons">
+                    <button class="theory-button active" data-theory="heroic">A Heroic Symbol</button>
+                    <button class="theory-button" data-theory="critical">A Critical View</button>
+                    <button class="theory-button" data-theory="details">Hidden Details</button>
+                </div>
+                <div id="historian-content">
+                    <!-- Text content will be dynamically inserted here -->
+                </div>
+            </div>
+            <button class="back-button close-button">X</button>
+        </div>
+
+        <!-- Layer 4: The Trivia Panel View (Hidden by default) -->
+        <div id="trivia-view" class="hidden">
+            <button class="back-button close-button">X</button>
+            
+            <div id="trivia-item-1" class="trivia-item">
+                <h2>Find a Detail!</h2>
+                <p>Look closely at the people in the boat. Can you find the future U.S. President, James Monroe, holding the flag just behind Washington?</p>
+            </div>
+
+            <div id="trivia-item-2" class="trivia-item hidden">
+                <h2>Quiz Time!</h2>
+                <p>What is the likely reason the artist included an African American man in the boat?</p>
+                <div class="quiz-options">
+                    <button>A) It was his close friend</button>
+                    <button>B) To show the diversity of the army</button>
+                    <button>C) He was a famous soldier</button>
+                </div>
+            </div>
+
+            <div class="trivia-nav">
+                <button id="prev-trivia">Previous</button>
+                <button id="next-trivia">Next</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- JAVASCRIPT LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const choicePanel = document.getElementById('choice-panel');
+            const showArtistBtn = document.getElementById('show-artist-button');
+            const showHistorianBtn = document.getElementById('show-historian-button');
+            const showTriviaBtn = document.getElementById('show-trivia-button');
+            const artistView = document.getElementById('artist-view');
+            const historianView = document.getElementById('historian-view');
+            const triviaView = document.getElementById('trivia-view');
+            const backButtons = document.querySelectorAll('.back-button');
+
+            // --- Historian Interactive Elements ---
+            const historianContent = document.getElementById('historian-content');
+            const theoryButtons = document.querySelectorAll('.theory-button');
+            const theories = {
+                heroic: "This painting is a powerful piece of American Romanticism, masterfully creating a heroic narrative of triumph against all odds. The light breaking through the dark clouds symbolizes hope and divine providence.",
+                critical: "From a critical perspective, the work is seen as propaganda. It's historically inaccurate—the flag shown wasn't designed yet, and the boat is too small—all to create a more dramatic, mythic image of Washington.",
+                details: "Notice the diverse group in the boat, including a Scottish immigrant and an African American man. This was the artist's way of showing that the fight for independence was a collective effort by many kinds of people."
+            };
+
+            function updateHistorianContent(theory) {
+                historianContent.textContent = theories[theory];
+                theoryButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theory === theory);
+                });
+            }
+
+            theoryButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    updateHistorianContent(button.dataset.theory);
+                });
+            });
+
+            // --- Trivia Interactive Elements ---
+            const triviaItems = document.querySelectorAll('.trivia-item');
+            const prevTriviaBtn = document.getElementById('prev-trivia');
+            const nextTriviaBtn = document.getElementById('next-trivia');
+            let currentTriviaIndex = 0;
+
+            function showTriviaItem(index) {
+                triviaItems.forEach((item, i) => {
+                    item.classList.toggle('hidden', i !== index);
+                });
+                prevTriviaBtn.disabled = index === 0;
+                nextTriviaBtn.disabled = index === triviaItems.length - 1;
+            }
+
+            prevTriviaBtn.addEventListener('click', () => {
+                if (currentTriviaIndex > 0) {
+                    currentTriviaIndex--;
+                    showTriviaItem(currentTriviaIndex);
+                }
+            });
+
+            nextTriviaBtn.addEventListener('click', () => {
+                if (currentTriviaIndex < triviaItems.length - 1) {
+                    currentTriviaIndex++;
+                    showTriviaItem(currentTriviaIndex);
+                }
+            });
+
+
+            // --- Core Functions ---
+            function hideAllOverlays() {
+                artistView.classList.add('hidden');
+                historianView.classList.add('hidden');
+                triviaView.classList.add('hidden');
+            }
+
+            function resetToChoicePanel() {
+                hideAllOverlays();
+                choicePanel.classList.remove('hidden');
+            }
+
+            // --- Event Listeners ---
+            showArtistBtn.addEventListener('click', () => {
+                choicePanel.classList.add('hidden');
+                artistView.classList.remove('hidden');
+            });
+
+            showHistorianBtn.addEventListener('click', () => {
+                choicePanel.classList.add('hidden');
+                historianView.classList.remove('hidden');
+                updateHistorianContent('heroic'); // Set the default view
+            });
+
+            showTriviaBtn.addEventListener('click', () => {
+                choicePanel.classList.add('hidden');
+                triviaView.classList.remove('hidden');
+                currentTriviaIndex = 0; // Reset to the first trivia item
+                showTriviaItem(currentTriviaIndex);
+            });
+
+            backButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    resetToChoicePanel();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
