@@ -1,2 +1,0 @@
-# amuseme
-Amuseme project
